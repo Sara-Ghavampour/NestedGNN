@@ -13,7 +13,8 @@ T1=${2}
 for target in $(seq ${T0} ${T1})
 do
   # The following 4 commands reproduce the NGNN results in Table 4.
-  python run_qm9.py --h 3 --model Nested_k1_GNN --save_appendix _k1_h3_spd_rd --use_rd --target ${target}
+  python run_qm9.py --h 3 --model k12_GNN --save_appendix _k1_h3_spd_rd --use_rd --target 2 
+  # python run_qm9.py --h 3 --model Nested_k1_GNN --save_appendix _k1_h3_spd_rd --use_rd --target ${target}  # wrong commands
   #python run_qm9.py --h 3 --model Nested_k12_GNN --save_appendix _k12_h3_spd_rd --use_rd --target ${target}
   #python run_qm9.py --h 3 --model Nested_k13_GNN --save_appendix _k13_h3_spd_rd --use_rd --target ${target}
   #python run_qm9.py --h 3 --model Nested_k123_GNN --save_appendix _k123_h3_spd_rd --use_rd --target ${target}

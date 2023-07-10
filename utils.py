@@ -58,7 +58,7 @@ def create_subgraphs(data, h=1, sample_ratio=1.0, max_nodes_per_hop=None,
             if 'node_type' in data:
                 data_.node_type = node_type_
 
-            if use_rd:
+            if use_rd:    # ??????????????????????????????????????????????????????????????
                 # See "Link prediction in complex networks: A survey".
                 adj = to_scipy_sparse_matrix(
                     edge_index_, num_nodes=nodes_.shape[0]
@@ -128,28 +128,39 @@ def k_hop_subgraph(node_idx, num_hops, edge_index, relabel_nodes=False,
                    num_nodes=None, flow='source_to_target', node_label='hop', 
                    max_nodes_per_hop=None):
 
-    num_nodes = maybe_num_nodes(edge_index, num_nodes)
+    num_nodes = maybe_num_nodes(edge_index, num_nodes)  # get num_nodes !
 
     assert flow in ['source_to_target', 'target_to_source']
     if flow == 'target_to_source':
-        row, col = edge_index
+        row, col = edge_index  #row is src here
     else:
         col, row = edge_index
+    
+    
+#  edge_index:  tensor([[0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 5, 6, 7],
+#  [1, 0, 2, 5, 1, 3, 6, 7, 2, 4, 3, 1, 2, 2]])
+# ********************8**********8***************************8
+# col, row :  tensor([0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 5, 6, 7]) tensor([1, 0, 2, 5, 1, 3, 6, 7, 2, 4, 3, 1, 2, 2])
 
-    node_mask = row.new_empty(num_nodes, dtype=torch.bool)
+    node_mask = row.new_empty(num_nodes, dtype=torch.bool) 
+    # torch.Size([num_nodes]) 
+    # size(row )= 2*num_nodes==edge_index 
+    # # node_mask boolean tensor
+   
     edge_mask = row.new_empty(row.size(0), dtype=torch.bool)
-
-    subsets = [torch.tensor([node_idx], device=row.device).flatten()]
+    
+    subsets = [torch.tensor([node_idx], device=row.device).flatten()] #subsets = tensor with size node_idx
     visited = set(subsets[-1].tolist())
     label = defaultdict(list)
     for node in subsets[-1].tolist():
         label[node].append(1)
     if node_label == 'hop':
         hops = [torch.LongTensor([0], device=row.device).flatten()]
+        print('1: ',hops)
     for h in range(num_hops):
         node_mask.fill_(False)
-        node_mask[subsets[-1]] = True
-        torch.index_select(node_mask, 0, row, out=edge_mask)
+        node_mask[subsets[-1]] = True  # all elements of node_maske= false -> node_maske[subsets[-1]] = true
+        torch.index_select(node_mask, 0, row, out=edge_mask) # selects elements from node_mask(ax 0) baseds on row indexes ->edge_mask
         new_nodes = col[edge_mask]
         tmp = []
         for node in new_nodes.tolist():
@@ -165,16 +176,18 @@ def k_hop_subgraph(node_idx, num_hops, edge_index, relabel_nodes=False,
         new_nodes = set(tmp)
         visited = visited.union(new_nodes)
         new_nodes = torch.tensor(list(new_nodes), device=row.device)
-        subsets.append(new_nodes)
+        subsets.append(new_nodes)   #subsets is for each h 
         if node_label == 'hop':
             hops.append(torch.LongTensor([h+1] * len(new_nodes), device=row.device))
-    subset = torch.cat(subsets)
+            print('2: ',hops)
+    subset = torch.cat(subsets)  #subset is for each node (root)
     inverse_map = torch.tensor(range(subset.shape[0]))
     if node_label == 'hop':
         hop = torch.cat(hops)
+        print('hop: ',hop)
     # Add `node_idx` to the beginning of `subset`.
     subset = subset[subset != node_idx]
-    subset = torch.cat([torch.tensor([node_idx], device=row.device), subset])
+    subset = torch.cat([torch.tensor([node_idx], device=row.device), subset]) # sub or set of subs for each node
 
     z = None
     if node_label == 'hop':
@@ -218,7 +231,7 @@ def k_hop_subgraph(node_idx, num_hops, edge_index, relabel_nodes=False,
         node_idx[subset] = torch.arange(subset.size(0), device=row.device)
         edge_index = node_idx[edge_index]
 
-    return subset, edge_index, edge_mask, z
+    return subset, edge_index, edge_mask, z # DE
 
 
 def maybe_num_nodes(index, num_nodes=None):
