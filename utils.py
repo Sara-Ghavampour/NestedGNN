@@ -17,13 +17,133 @@ from batch import Batch
 from collections import defaultdict
 
 
+def super_graph(data, h=1, sample_ratio=1.0, max_nodes_per_hop=None,
+                     node_label='hop', use_rd=False, subgraph_pretransform=None):
+    # Given a PyG graph data, extract an h-hop rooted subgraph for each of its
+    # nodes, and combine these node-subgraphs into a new large disconnected graph
+    # If given a list of h, will return multiple subgraphs for each node stored in
+    # a dict.
+    print('super_graph')
+    if type(h) == int:
+        h = [h]
+    assert(isinstance(data, Data))
+    x, edge_index, num_nodes = data.x, data.edge_index, data.num_nodes
+
+    new_data_multi_hop = {}
+    for h_ in h:
+        graphs = []
+        for ind in range(num_nodes):
+            graph_data = create_subgraphs(data, h=1
+                    , sample_ratio=1.0, max_nodes_per_hop=None,
+                     node_label='hop', use_rd=False, subgraph_pretransform=None)
+            nodes_, edge_index_, edge_mask_, z_ = graph_data.x, graph_data.edge_index, graph_data.num_nodes,graph_data.z
+            print('***************************',nodes_.shape)
+            x_ = None
+            edge_attr_ = None
+            pos_ = None
+            # if x is not None:
+            #     x_ = x[nodes_]
+            # else:
+            #     x_ = None
+            x_=nodes_
+
+            if 'node_type' in data:
+                node_type_ = data.node_type[nodes_]
+
+            # if data.edge_attr is not None:
+            #     edge_attr_ = data.edge_attr[edge_mask_]
+            # if data.pos is not None:
+            #     pos_ = data.pos[nodes_]
+            # data_ = data.__class__(x_, edge_index_, edge_attr_, None, pos_, z=z_)
+            data_ = data.__class__(x_, edge_index_)
+            data_.num_nodes = nodes_.shape[0]
+            
+            if 'node_type' in data:
+                data_.node_type = node_type_
+
+            if use_rd:    # ??????????????????????????????????????????????????????????????
+                # See "Link prediction in complex networks: A survey".
+                adj = to_scipy_sparse_matrix(
+                    edge_index_, num_nodes=nodes_.shape[0]
+                ).tocsr()
+                laplacian = ssp.csgraph.laplacian(adj).toarray()
+                try:
+                    L_inv = linalg.pinv(laplacian)
+                except:
+                    laplacian += 0.01 * np.eye(*laplacian.shape)
+                lxx = L_inv[0, 0]
+                lyy = L_inv[list(range(len(L_inv))), list(range(len(L_inv)))]
+                lxy = L_inv[0, :]
+                lyx = L_inv[:, 0]
+                rd_to_x = torch.FloatTensor((lxx + lyy - lxy - lyx)).unsqueeze(1)
+                data_.rd = rd_to_x
+
+            if subgraph_pretransform is not None:  # for k-gnn
+                data_ = subgraph_pretransform(data_)
+                if 'assignment_index_2' in data_:
+                    data_.batch_2 = torch.zeros(
+                        data_.iso_type_2.shape[0], dtype=torch.long
+                    )
+                if 'assignment_index_3' in data_:
+                    data_.batch_3 = torch.zeros(
+                        data_.iso_type_3.shape[0], dtype=torch.long
+                    )
+
+            graphs.append(data_)
+
+        # new_data is treated as a big disconnected graph of the batch of subgraphs
+        new_data = Batch.from_data_list(graphs)
+        new_data.num_nodes = sum(data_.num_nodes for data_ in graphs)
+        new_data.num_subgraphs = len(graphs)
+        new_data.original_edge_index = edge_index
+        new_data.original_edge_attr = data.edge_attr
+        new_data.original_pos = data.pos
+            
+        # rename batch, because batch will be used to store node_to_graph assignment
+        new_data.subgraph_to_graph = new_data.batch
+        new_data.node_to_subgraph = graph_data.subgraph_to_graph
+        new_data.sara='fuck my life'
+        
+        del new_data.batch
+        if 'batch_2' in new_data:
+            new_data.assignment2_to_subgraph = new_data.batch_2
+            del new_data.batch_2
+        if 'batch_3' in new_data:
+            new_data.assignment3_to_subgraph = new_data.batch_3
+            del new_data.batch_3
+
+        # create a subgraph_to_graph assignment vector (all zero)
+        new_data.graph_to_supergraph = torch.zeros(len(graphs), dtype=torch.long)
+        print('len(graphs) ',len(graphs))
+        print('new_data',new_data)
+        print('new_data.subgraph_to_graph',new_data.graph_to_supergraph)
+        # copy remaining graph attributes
+        for k, v in data:
+            if k not in ['x', 'edge_index', 'edge_attr', 'pos', 'num_nodes', 'batch',
+                         'z', 'rd', 'node_type']:
+                new_data[k] = v
+
+        if len(h) == 1:
+            return new_data
+        else:
+            new_data_multi_hop[h_] = new_data
+
+    return new_data_multi_hop
+
+
+    
+
+
+
+
+
 def create_subgraphs(data, h=1, sample_ratio=1.0, max_nodes_per_hop=None,
                      node_label='hop', use_rd=False, subgraph_pretransform=None):
     # Given a PyG graph data, extract an h-hop rooted subgraph for each of its
     # nodes, and combine these node-subgraphs into a new large disconnected graph
     # If given a list of h, will return multiple subgraphs for each node stored in
     # a dict.
-
+    # print('create_subgraphs')
     if type(h) == int:
         h = [h]
     assert(isinstance(data, Data))
@@ -37,6 +157,7 @@ def create_subgraphs(data, h=1, sample_ratio=1.0, max_nodes_per_hop=None,
                 ind, h_, edge_index, True, num_nodes, node_label=node_label, 
                 max_nodes_per_hop=max_nodes_per_hop
             )
+            # print('***************************',(nodes_.shape))
             x_ = None
             edge_attr_ = None
             pos_ = None
@@ -99,6 +220,8 @@ def create_subgraphs(data, h=1, sample_ratio=1.0, max_nodes_per_hop=None,
             
         # rename batch, because batch will be used to store node_to_graph assignment
         new_data.node_to_subgraph = new_data.batch
+        new_data.sara='fuck my life'
+        
         del new_data.batch
         if 'batch_2' in new_data:
             new_data.assignment2_to_subgraph = new_data.batch_2
@@ -109,7 +232,9 @@ def create_subgraphs(data, h=1, sample_ratio=1.0, max_nodes_per_hop=None,
 
         # create a subgraph_to_graph assignment vector (all zero)
         new_data.subgraph_to_graph = torch.zeros(len(subgraphs), dtype=torch.long)
-        
+        # print('len(subgraphs) ',len(subgraphs))
+        # print('new_data',new_data)
+        # print('new_data.subgraph_to_graph',new_data.subgraph_to_graph)
         # copy remaining graph attributes
         for k, v in data:
             if k not in ['x', 'edge_index', 'edge_attr', 'pos', 'num_nodes', 'batch',
@@ -117,10 +242,11 @@ def create_subgraphs(data, h=1, sample_ratio=1.0, max_nodes_per_hop=None,
                 new_data[k] = v
 
         if len(h) == 1:
+            # print('new_data: ',new_data)
             return new_data
         else:
             new_data_multi_hop[h_] = new_data
-
+    # print('new_data_multi_hop: ',type(new_data_multi_hop))
     return new_data_multi_hop
 
 
@@ -156,7 +282,6 @@ def k_hop_subgraph(node_idx, num_hops, edge_index, relabel_nodes=False,
         label[node].append(1)
     if node_label == 'hop':
         hops = [torch.LongTensor([0], device=row.device).flatten()]
-        print('1: ',hops)
     for h in range(num_hops):
         node_mask.fill_(False)
         node_mask[subsets[-1]] = True  # all elements of node_maske= false -> node_maske[subsets[-1]] = true
@@ -179,12 +304,10 @@ def k_hop_subgraph(node_idx, num_hops, edge_index, relabel_nodes=False,
         subsets.append(new_nodes)   #subsets is for each h 
         if node_label == 'hop':
             hops.append(torch.LongTensor([h+1] * len(new_nodes), device=row.device))
-            print('2: ',hops)
     subset = torch.cat(subsets)  #subset is for each node (root)
     inverse_map = torch.tensor(range(subset.shape[0]))
     if node_label == 'hop':
         hop = torch.cat(hops)
-        print('hop: ',hop)
     # Add `node_idx` to the beginning of `subset`.
     subset = subset[subset != node_idx]
     subset = torch.cat([torch.tensor([node_idx], device=row.device), subset]) # sub or set of subs for each node

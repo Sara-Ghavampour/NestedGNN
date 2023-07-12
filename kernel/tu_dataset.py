@@ -132,6 +132,7 @@ class TUDataset(InMemoryDataset):
         os.rename(osp.join(folder, self.name), self.raw_dir)
 
     def process(self):
+        print('process')
         self.data, self.slices = read_tu_data(self.raw_dir, self.name)
 
         if self.pre_filter is not None:
@@ -141,9 +142,10 @@ class TUDataset(InMemoryDataset):
 
         if self.pre_transform is not None:
             data_list = [self.get(idx) for idx in range(len(self))]
-            #data_list = [self.pre_transform(data) for data in data_list]
+            # data_list = [self.pre_transform(data) for data in data_list]##########changed#########################################################################
             new_data_list = []
             for data in tqdm(data_list):
+                # print('new_data_list.append(self.pre_transform(data))')
                 new_data_list.append(self.pre_transform(data))
             data_list = new_data_list
             self.data, self.slices = self.collate(data_list)

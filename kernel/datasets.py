@@ -7,7 +7,7 @@ from torch_geometric.utils import degree
 import torch_geometric.transforms as T
 sys.path.append('%s/../' % os.path.dirname(os.path.realpath(__file__)))
 sys.path.append('%s/' % os.path.dirname(os.path.realpath(__file__)))
-from utils import create_subgraphs, return_prob
+from utils import create_subgraphs, return_prob,super_graph
 from tu_dataset import TUDataset
 import pdb
 
@@ -26,6 +26,7 @@ class NormalizedDegree(object):
 
 def get_dataset(name, sparse=True, h=None, node_label='hop', use_rd=False, 
                 use_rp=None, reprocess=False, clean=False, max_nodes_per_hop=None):
+    print('get_dataset')
     path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data')
     pre_transform = None
     if h is not None:
@@ -35,10 +36,12 @@ def get_dataset(name, sparse=True, h=None, node_label='hop', use_rd=False,
             path += '_rd'
         if max_nodes_per_hop is not None:
             path += '_mnph{}'.format(max_nodes_per_hop)
+        
+        # pre_transform = lambda x: super_graph(x, h, 1.0, max_nodes_per_hop, node_label, use_rd)
 
         pre_transform = lambda x: create_subgraphs(x, h, 1.0, max_nodes_per_hop, node_label, use_rd)
-
     if use_rp is not None:  # use RW return probability as additional features
+        
         path += f'_rp{use_rp}'
         if pre_transform is None:
             pre_transform = return_prob(use_rp)
@@ -50,6 +53,7 @@ def get_dataset(name, sparse=True, h=None, node_label='hop', use_rd=False,
 
     print(path)
     dataset = TUDataset(path, name, pre_transform=pre_transform, cleaned=clean)
+    # print('type(dataset) in datasets.py',type(dataset))
     dataset.data.edge_attr = None
 
     if dataset.data.x is None:

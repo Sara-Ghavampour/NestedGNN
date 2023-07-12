@@ -203,7 +203,7 @@ pre_filter = None
 if args.filter:
     pre_filter = MyFilter()
     path += '_filtered'
-
+print('here')
 dataset = QM9(
     path, 
     transform=T.Compose(
@@ -221,7 +221,7 @@ dataset = QM9(
 )
 
 dataset = dataset.shuffle()
-
+print('after')
 
 if False:  # do some statistics
     loader = DataLoader(dataset, batch_size=1, shuffle=False)

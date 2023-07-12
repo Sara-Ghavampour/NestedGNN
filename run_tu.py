@@ -21,6 +21,9 @@ from kernel.diff_pool import *
 from kernel.global_attention import GlobalAttentionNet
 from kernel.set2set import Set2SetNet
 from kernel.sort_pool import SortPool
+from torch_geometric.data import Data
+# from torch_geometric.explain import Explainer, GNNExplainer
+# from torch_geometric.explain import CaptumExplainer, Explainer
 
 
 # used to traceback which code cause warnings, can delete
@@ -168,6 +171,7 @@ for dataset_name, Net in product(datasets, nets):
         log = "Using {} layers, {} hidden units, h = {}".format(num_layers, hidden, h)
         print(log)
         logger(log)
+        print('*')
         dataset = get_dataset(
             dataset_name, 
             Net != DiffPool, 
@@ -179,6 +183,7 @@ for dataset_name, Net in product(datasets, nets):
             args.clean, 
             args.max_nodes_per_hop, 
         )
+        print('(dataset)',(dataset))
         model = Net(dataset, num_layers, hidden, args.node_label!='no', args.use_rd)
         loss, acc, std = cross_val_method(
             dataset,
@@ -192,6 +197,13 @@ for dataset_name, Net in product(datasets, nets):
             weight_decay=0,
             device=device, 
             logger=logger)
+        
+        # torch.save(model.state_dict(), './models/nestedgcn2.pt')        # torch.save(model.state_dict(), './models')
+        torch.save(model, './models/m1.pt')
+        
+
+                
+        
         if loss < best_result[0]:
             best_result = (loss, acc, std)
             best_hyper = (num_layers, hidden, h)

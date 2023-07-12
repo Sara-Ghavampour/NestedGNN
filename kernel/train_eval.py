@@ -171,6 +171,8 @@ def cross_validation_without_val_set( dataset,
                 for param_group in optimizer.param_groups:
                     param_group['lr'] = lr_decay_factor * param_group['lr']
 
+
+        print(model.features)
         if logger is not None:
             logger(log)
 
