@@ -58,6 +58,27 @@ class NestedGCN(torch.nn.Module):
 
         x = F.relu(self.conv1(x, edge_index))
         xs = [x]
+        
+        # i=0
+        # for conv in self.convs:
+        #     i+=1
+        #     x=conv(x, edge_index)
+            
+        #     if i==1:
+        #         # Compute logits
+        #         logits = self.fc(x)
+        #         print('logits: ',logits.shape)
+
+        #         # Compute class probabilities
+        #         probs = F.softmax(logits, dim=1)
+        #         print('probs: ',probs.shape)
+        #         # cam = torch.matmul(x.unsqueeze(2), probs.unsqueeze(1)).squeeze()
+
+                
+            
+        #     x = F.relu()
+        #     xs += [x]
+        
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
             xs += [x]
@@ -65,9 +86,17 @@ class NestedGCN(torch.nn.Module):
         x = global_mean_pool(x, data.subgraph_to_graph)
         x = F.relu(self.lin1(x))
         x = F.dropout(x, p=0.5, training=self.training)
-        features = self.lin2(x)
+        features = self.lin2(x) # logits
+        
+        probs = F.softmax(features, dim=1)
+        cam = torch.matmul(x.unsqueeze(2), probs.unsqueeze(1)) 
+        # print('x.unsqueeze(2) : ',x.unsqueeze(2).shape)
+        # print('probs.unsqueeze(1) : ',probs.unsqueeze(1).shape)
+        # print('cam: ',cam)
+        # cam = torch.matmul(x.squeeze(), probs)
+
         if return_features:
-            return F.log_softmax(features, dim=-1),features
+            return F.log_softmax(features, dim=-1),features,cam
         else:
             return F.log_softmax(features, dim=-1)
 

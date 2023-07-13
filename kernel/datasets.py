@@ -2,6 +2,7 @@ import os.path as osp
 import sys, os
 from shutil import rmtree
 import torch
+from functools import partial
 #from torch_geometric.datasets import TUDataset
 from torch_geometric.utils import degree
 import torch_geometric.transforms as T
@@ -37,9 +38,19 @@ def get_dataset(name, sparse=True, h=None, node_label='hop', use_rd=False,
         if max_nodes_per_hop is not None:
             path += '_mnph{}'.format(max_nodes_per_hop)
         
-        # pre_transform = lambda x: super_graph(x, h, 1.0, max_nodes_per_hop, node_label, use_rd)
+        # pre_transform = lambda x: create_subgraphs(x, h, 1.0, max_nodes_per_hop, node_label, use_rd)            
+        partial_fn = partial(
+            create_subgraphs,
+            h=h,
+            threshold=1.0,
+            max_nodes_per_hop=max_nodes_per_hop,
+            node_label=node_label,
+            use_rd=use_rd
+        )
 
-        pre_transform = lambda x: create_subgraphs(x, h, 1.0, max_nodes_per_hop, node_label, use_rd)
+        # Apply the partial function in the pre_transform
+        pre_transform = partial(partial_fn)
+        
     if use_rp is not None:  # use RW return probability as additional features
         
         path += f'_rp{use_rp}'

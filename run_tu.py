@@ -199,8 +199,7 @@ for dataset_name, Net in product(datasets, nets):
             device=device, 
             logger=logger)
         
-        # torch.save(model.state_dict(), './models/nestedgcn2.pt')        # torch.save(model.state_dict(), './models')
-        torch.save(model, './models/m1.pt')
+        # torch.save(model, './models/ngnn128.pt')
         
 
                 
