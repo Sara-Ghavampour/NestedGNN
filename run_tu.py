@@ -185,6 +185,7 @@ for dataset_name, Net in product(datasets, nets):
         )
         print('(dataset)',(dataset))
         model = Net(dataset, num_layers, hidden, args.node_label!='no', args.use_rd)
+        
         loss, acc, std = cross_val_method(
             dataset,
             model,

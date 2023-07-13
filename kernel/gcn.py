@@ -38,7 +38,7 @@ class NestedGCN(torch.nn.Module):
         self.lin1.reset_parameters()
         self.lin2.reset_parameters()
 
-    def forward(self, data):
+    def forward(self, data,return_features=False):
         x, edge_index, batch = data.x, data.edge_index, data.batch
         
         # node label embedding
@@ -63,10 +63,13 @@ class NestedGCN(torch.nn.Module):
             xs += [x]
         x = global_mean_pool(torch.cat(xs, dim=1), data.node_to_subgraph)
         x = global_mean_pool(x, data.subgraph_to_graph)
-        x = F.relu(self.lin1(x))
-        x = F.dropout(x, p=0.5, training=self.training)
+        features = F.relu(self.lin1(x))
+        x = F.dropout(features, p=0.5, training=self.training)
         x = self.lin2(x)
-        return F.log_softmax(x, dim=-1)
+        if return_features:
+            return F.log_softmax(x, dim=-1),features
+        else:
+            return F.log_softmax(x, dim=-1)
 
     def __repr__(self):
         return self.__class__.__name__
