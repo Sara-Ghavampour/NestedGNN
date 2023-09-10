@@ -2,6 +2,7 @@ Nested Graph Neural Networks
 ============================
 
 About
+
 -----
 Nested Graph Neural Network (NGNN) is a general framework to improve a base GNN's expressive power and performance. It consists of a base GNN (usually a weak message-passing GNN) and an outer GNN. In NGNN, we extract a rooted subgraph around each node, and let the base GNN to learn a subgraph representation from the rooted subgraph, which is used as the root node's representation. Then, the outer GNN further learns a graph representation from these root node representations returned from the base GNN (in this paper, we simply let the outer GNN be a global pooling layer without graph convolution). NGNN is proved to be more powerful than 1-WL, being able to discriminate almost all r-regular graphs where 1-WL always fails. In contrast to other high-order GNNs, NGNN only incurs a constant time higher time complexity than its base GNN (given the rooted subgraph size is bounded). NGNN often shows immediate performance gains in real-world datasets when applying it to a weak base GNN.
 
